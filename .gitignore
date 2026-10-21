@@ -1,14 +1,5 @@
-# Salidas de Maven / NetBeans
-target/
-nbproject/private/
-nb-configuration.xml
-
-# IDEs y sistema
-.idea/
-*.iml
-.vscode/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
 .DS_Store
-Thumbs.db
-
-# Clases compiladas sueltas
-*.class
