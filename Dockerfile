@@ -21,6 +21,8 @@ COPY --from=build /app/target/p6-servicios-web.jar app.jar
 
 # Sin pantalla: los nodos corren solo como servicios REST y escriben su bitacora en consola
 ENV JAVA_OPTS="-Djava.awt.headless=true -Xmx256m"
+# Hora de la Ciudad de Mexico en las bitacoras (por omision el contenedor usa UTC)
+ENV TZ=America/Mexico_City
 
 EXPOSE 5000 6001 6002 6003
 
