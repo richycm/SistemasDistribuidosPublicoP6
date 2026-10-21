@@ -1,0 +1,7 @@
+# Los scripts de Windows siempre con fin de linea CRLF (cmd.exe falla con LF en algunos casos)
+*.bat text eol=crlf
+# El resto del codigo se normaliza a LF dentro del repositorio
+*.java text
+*.html text
+*.md text
+*.xml text

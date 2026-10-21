@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<!--
+  Cliente web REST del restaurante distribuido (Practica 6 - Servicios Web).
+  Consume la misma API que el cliente Java, pero desde el navegador con fetch():
+  demuestra que el servicio es independiente del lenguaje del cliente.
+  Alumno: Ricardo Carmona Martinez - Sistemas Distribuidos 7CM1
+-->
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P6 Cliente Web REST - Restaurante Distribuido</title>
+<style>
+  :root {
+    --bg: #12141d; --card: #1c202f; --console: #0d0f16; --borde: #2d3446;
+    --texto: #f3f4f6; --tenue: #9ca3af; --azul: #3b82f6; --verde: #22c55e;
+    --rojo: #ef4444; --ambar: #f59e0b; --morado: #8b5cf6; --teal: #14b8a6;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--texto); font: 14px "Segoe UI", system-ui, sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 16px; display: grid; gap: 12px; }
+  .card { background: var(--card); border: 1px solid var(--borde); border-radius: 6px; padding: 12px 14px; }
+  h1 { font-size: 17px; margin: 0; }
+  h2 { font-size: 12px; margin: 0 0 8px; color: var(--tenue); letter-spacing: .04em; text-transform: uppercase; }
+  .sub { color: var(--tenue); font-size: 12px; margin-top: 3px; }
+  .fila { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  label { color: var(--tenue); font-weight: 600; font-size: 12px; }
+  input, select { background: var(--console); color: var(--texto); border: 1px solid var(--borde); padding: 6px 8px;
+                  font: 600 12px Consolas, monospace; border-radius: 4px; }
+  button { border: 0; color: #fff; padding: 7px 14px; font: 600 12px "Segoe UI", sans-serif; border-radius: 4px; cursor: pointer; }
+  button:disabled { opacity: .45; cursor: default; }
+  .b-azul { background: var(--azul); } .b-morado { background: var(--morado); } .b-gris { background: #374151; }
+  .b-teal { background: var(--teal); } .b-rojo { background: var(--rojo); }
+  .cocinas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .cocina { background: #181b27; border: 1px solid var(--borde); border-radius: 6px; padding: 10px 12px; }
+  .cocina.off { border: 2px solid var(--rojo); background: #261a1e; }
+  .cocina b { font-size: 14px; }
+  .dato { font-size: 12px; color: var(--tenue); margin-top: 4px; }
+  .badge { font: 700 11px "Segoe UI"; float: right; }
+  .on { color: var(--verde); } .off-t { color: var(--rojo); }
+  .tabla { max-height: 300px; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; color: var(--tenue); font-weight: 600; border-bottom: 1px solid var(--borde); padding: 6px;
+       position: sticky; top: 0; background: var(--card); }
+  td { border-bottom: 1px solid #232838; padding: 4px 6px; vertical-align: middle; }
+  td button { padding: 4px 10px; }
+  .EN_FILA { color: var(--ambar); font-weight: 700; } .PREPARANDO { color: var(--azul); font-weight: 700; }
+  .LISTO { color: var(--verde); font-weight: 700; } .CANCELADO { color: var(--rojo); font-weight: 700; }
+  #consola { background: var(--console); border: 1px solid #282e3e; height: 190px; overflow: auto; padding: 8px;
+             font: 12px Consolas, monospace; white-space: pre-wrap; color: #e5e7eb; margin: 0; }
+  .s2 { color: var(--verde); } .s4 { color: var(--ambar); } .s5 { color: var(--rojo); }
+  .vacio { color: var(--tenue); font-style: italic; text-align: center; padding: 18px; }
+  @media (max-width: 760px) { .cocinas { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <section class="card">
+    <h1>CLIENTE WEB REST DEL RESTAURANTE DISTRIBUIDO</h1>
+    <div class="sub">Pr&aacute;ctica 6: Servicios Web | HTML + JavaScript (fetch) + JSON | Alumno: Ricardo Carmona Mart&iacute;nez</div>
+    <div class="fila" style="margin-top:10px">
+      <label for="api">Coordinador:</label>
+      <input id="api" size="28">
+      <label for="comensal">Comensal:</label>
+      <input id="comensal" value="Web" size="10">
+      <button class="b-gris" id="btn404" title="GET a un folio que no existe">Probar 404</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Cocinas seg&uacute;n GET /api/cocinas (se actualiza cada 2 s)</h2>
+    <div class="cocinas" id="cocinas"><div class="vacio">Consultando al coordinador...</div></div>
+  </section>
+
+  <section class="card">
+    <h2>Nuevo pedido (POST /api/despachos &rarr; POST /api/pedidos)</h2>
+    <div class="fila">
+      <label for="platillo">Platillo:</label>
+      <select id="platillo"></select>
+      <label for="notas">Notas:</label>
+      <input id="notas" size="18" placeholder="opcional">
+      <button class="b-azul" id="btnPedir">Enviar Pedido</button>
+      <button class="b-morado" id="btnRafaga">R&aacute;faga (6 Pedidos)</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Mis pedidos (GET /api/pedidos/{folio} cada segundo)</h2>
+    <div class="tabla">
+    <table>
+      <thead><tr><th>Folio</th><th>Comensal</th><th>Cocina</th><th>Platillo</th><th>Notas</th><th>Estado</th><th>Detalle</th><th>Acciones</th></tr></thead>
+      <tbody id="pedidos"><tr><td colspan="8" class="vacio">Sin pedidos todav&iacute;a.</td></tr></tbody>
+    </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="fila" style="justify-content:space-between">
+      <h2 style="margin:0">Consola de tr&aacute;fico HTTP</h2>
+      <button class="b-gris" id="btnLimpiar">Limpiar</button>
+    </div>
+    <pre id="consola"></pre>
+  </section>
+</main>
+
+<script>
+"use strict";
+// Si la pagina la sirve el coordinador, la API esta en el mismo origen
+const API_DEFAULT = location.protocol.startsWith("http") ? location.origin + "/api" : "http://127.0.0.1:5000/api";
+const $ = id => document.getElementById(id);
+$("api").value = API_DEFAULT;
+
+let menu = [];
+let contador = 1;
+const pedidos = [];   // { folio, comensal, cocina, url, datos }
+
+function hora() { return new Date().toTimeString().slice(0, 8); }
+
+function log(texto, clase) {
+  const linea = document.createElement("span");
+  if (clase) linea.className = clase;
+  linea.textContent = "[" + hora() + "] " + texto + "\n";
+  $("consola").appendChild(linea);
+  $("consola").scrollTop = $("consola").scrollHeight;
+}
+
+/** Envia una peticion JSON y devuelve el cuerpo; lanza Error con el mensaje del servidor si no es 2xx. */
+async function http(metodo, url, cuerpo, silencioso) {
+  const opciones = { method: metodo, headers: { "Accept": "application/json" } };
+  if (cuerpo !== undefined) {
+    opciones.headers["Content-Type"] = "application/json";
+    opciones.body = JSON.stringify(cuerpo);
+  }
+  if (!silencioso) log("-> " + metodo + " " + url + (cuerpo ? "  " + JSON.stringify(cuerpo) : ""));
+  let resp;
+  try {
+    resp = await fetch(url, opciones);
+  } catch (e) {
+    log("<- sin respuesta de " + url, "s5");
+    throw new Error("Sin respuesta de " + url);
+  }
+  const texto = await resp.text();
+  const json = texto ? JSON.parse(texto) : {};
+  if (!silencioso || !resp.ok) {
+    let resumen = JSON.stringify(json);
+    if (resumen.length > 150) resumen = resumen.slice(0, 147) + "...";
+    log("<- " + resp.status + " " + resp.statusText + "  " + resumen, "s" + String(resp.status)[0]);
+  }
+  if (!resp.ok) throw new Error("HTTP " + resp.status + ": " + (json.mensaje || resp.statusText));
+  return json;
+}
+
+const api = () => $("api").value.replace(/\/$/, "");
+
+async function cargarMenu() {
+  try {
+    menu = await http("GET", api() + "/menu");
+    $("platillo").innerHTML = menu.map(p =>
+      `<option value="${p.id}">${p.id}. ${p.nombre} - $${p.precio.toFixed(2)}</option>`).join("");
+  } catch (e) { log("No se pudo cargar el menu: " + e.message, "s5"); }
+}
+
+async function refrescarCocinas() {
+  try {
+    const cocinas = await http("GET", api() + "/cocinas", undefined, true);
+    $("cocinas").innerHTML = cocinas.map(c => `
+      <div class="cocina ${c.online ? "" : "off"}">
+        <span class="badge ${c.online ? "on" : "off-t"}">${c.online ? "ONLINE" : "OFFLINE"}</span>
+        <b>${c.nombre}</b>
+        <div class="dato">${c.url}</div>
+        <div class="dato" style="color:var(--ambar)">Carga: ${c.online ? c.carga + " (en fila: " + c.enFila + ")" : "--"}</div>
+        <div class="dato">Estaciones libres: ${c.online ? c.estacionesLibres + " / " + c.totalEstaciones : "--"}</div>
+        <div class="dato" style="color:var(--verde)">Atendidos: ${c.atendidos} | Ventas: $${c.ventas.toFixed(2)}</div>
+      </div>`).join("");
+  } catch (e) {
+    $("cocinas").innerHTML = `<div class="vacio">Coordinador sin respuesta (${e.message})</div>`;
+  }
+}
+
+async function enviarPedido(idPlatillo, notas) {
+  const comensal = ($("comensal").value.trim() || "Web").replace(/\s+/g, "_") + "#" + String(contador++).padStart(3, "0");
+  try {
+    const asig = await http("POST", api() + "/despachos", { comensal });
+    const cuerpo = { comensal, idPlatillo };
+    if (notas) cuerpo.notas = notas;
+    const datos = await http("POST", asig.url + "/pedidos", cuerpo);
+    pedidos.unshift({ folio: datos.folio, comensal, cocina: asig.cocina, url: asig.url, datos });
+    pintarPedidos();
+  } catch (e) { log("Pedido de " + comensal + " fallido: " + e.message, "s5"); }
+}
+
+async function modificar(i) {
+  const p = pedidos[i];
+  const opciones = menu.map(m => m.id + "=" + m.nombre).join(", ");
+  const id = prompt("Nuevo idPlatillo para el folio " + p.folio + " (" + opciones + "):", p.datos.idPlatillo);
+  if (id === null) return;
+  const notas = prompt("Notas:", p.datos.notas || "");
+  if (notas === null) return;
+  try {
+    p.datos = await http("PUT", p.url + "/pedidos/" + p.folio, { idPlatillo: Number(id), notas });
+    pintarPedidos();
+  } catch (e) { log("PUT rechazado: " + e.message, "s4"); }
+}
+
+async function cancelar(i) {
+  const p = pedidos[i];
+  try {
+    p.datos = await http("DELETE", p.url + "/pedidos/" + p.folio);
+    pintarPedidos();
+  } catch (e) { log("DELETE rechazado: " + e.message, "s4"); }
+}
+
+async function consultarPendientes() {
+  for (const p of pedidos) {
+    if (p.datos.estado === "LISTO" || p.datos.estado === "CANCELADO") continue;
+    try {
+      const antes = p.datos.estado;
+      p.datos = await http("GET", p.url + "/pedidos/" + p.folio, undefined, true);
+      if (antes !== p.datos.estado) log("Folio " + p.folio + " (" + p.cocina + "): " + antes + " -> " + p.datos.estado, "s2");
+    } catch (e) { /* cocina caida: se reintenta en la siguiente vuelta */ }
+  }
+  pintarPedidos();
+}
+
+function detalle(d) {
+  switch (d.estado) {
+    case "EN_FILA": return "Esperando estaci&oacute;n";
+    case "PREPARANDO": return "Estaci&oacute;n #" + d.estacion + " | " + d.segundosTranscurridos + "s / " + d.segundosPreparacion + "s";
+    case "LISTO": return "Estaci&oacute;n #" + d.estacion + " | $" + d.precio.toFixed(2) + " MXN";
+    default: return "Cancelado con DELETE";
+  }
+}
+
+function escapar(t) { const s = document.createElement("span"); s.textContent = t || ""; return s.innerHTML; }
+
+function pintarPedidos() {
+  if (!pedidos.length) return;
+  $("pedidos").innerHTML = pedidos.map((p, i) => {
+    const d = p.datos, enFila = d.estado === "EN_FILA";
+    return `<tr>
+      <td>${d.folio}</td><td>${escapar(p.comensal)}</td><td>${p.cocina}</td><td>${escapar(d.platillo)}</td>
+      <td>${escapar(d.notas)}</td><td class="${d.estado}">${d.estado}</td><td>${detalle(d)}</td>
+      <td><button class="b-teal" ${enFila ? "" : "disabled"} onclick="modificar(${i})">PUT</button>
+          <button class="b-rojo" ${enFila ? "" : "disabled"} onclick="cancelar(${i})">DELETE</button></td>
+    </tr>`;
+  }).join("");
+}
+
+$("btnPedir").onclick = () => enviarPedido(Number($("platillo").value), $("notas").value.trim());
+$("btnRafaga").onclick = () => { for (let k = 0; k < 6; k++) enviarPedido(menu[k % menu.length].id, ""); };
+$("btnLimpiar").onclick = () => { $("consola").textContent = ""; };
+$("btn404").onclick = async () => {
+  try {
+    const cocinas = await http("GET", api() + "/cocinas", undefined, true);
+    const viva = cocinas.find(c => c.online) || cocinas[0];
+    await http("GET", viva.url + "/pedidos/9999");
+  } catch (e) { /* el 404 ya quedo en la consola */ }
+};
+
+/** Modo demostracion (?demo=1): rafaga de 12 pedidos y luego PUT, DELETE y un 404. */
+async function demo() {
+  const espera = ms => new Promise(r => setTimeout(r, ms));
+  await espera(800);
+  await Promise.all(Array.from({ length: 12 }, (_, k) => enviarPedido(menu[k % menu.length].id, "")));
+  await espera(1200);
+  const enFila = pedidos.filter(p => p.datos.estado === "EN_FILA");
+  if (enFila[0]) {
+    enFila[0].datos = await http("PUT", enFila[0].url + "/pedidos/" + enFila[0].folio, { idPlatillo: 4, notas: "sin crutones" });
+  }
+  if (enFila[1]) {
+    enFila[1].datos = await http("DELETE", enFila[1].url + "/pedidos/" + enFila[1].folio);
+  }
+  pintarPedidos();
+  $("btn404").click();
+}
+
+log("Cliente web iniciado. API del coordinador: " + api());
+cargarMenu().then(() => { if (new URLSearchParams(location.search).has("demo")) demo(); });
+refrescarCocinas();
+setInterval(refrescarCocinas, 2000);
+setInterval(consultarPendientes, 1000);
+</script>
+</body>
+</html>
