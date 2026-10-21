@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>P6 — Restaurante Distribuido REST (Python + Flask)</title>
+<title>P6 — Restaurante Distribuido REST (Servicios Web)</title>
 <style>
   :root {
     --bg: #0f131d; --card: #181e2e; --card2: #121724; --border: #2a334d;
@@ -15,18 +15,22 @@
   header { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
   .title-block h1 { font-size: 16px; font-weight: 800; letter-spacing: 0.3px; color: #fff; }
   .title-block p { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .mode-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 99px; margin-top: 4px; }
+  .mode-badge.real { background: rgba(34,197,94,0.18); color: var(--green); border: 1px solid var(--green); }
+  .mode-badge.sim { background: rgba(139,92,246,0.18); color: #c084fc; border: 1px solid var(--purple); }
+
   .kpis { display: flex; gap: 10px; flex-wrap: wrap; }
-  .kpi { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; text-align: center; min-width: 120px; }
+  .kpi { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; text-align: center; min-width: 110px; }
   .kpi .lbl { font-size: 10px; text-transform: uppercase; color: var(--muted); display: block; }
   .kpi .val { font-size: 15px; font-weight: 800; margin-top: 2px; display: block; }
 
-  .sec-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin: 8px 0 6px; }
+  .sec-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin: 8px 0 6px; display: flex; justify-content: space-between; align-items: center; }
   .cocinas-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
-  .cocina-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px; position: relative; }
+  .cocina-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px; position: relative; transition: border-color 0.2s; }
   .cocina-card.off { border-color: #7f1d1d; background: #1a1218; opacity: 0.88; }
   .c-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
   .c-head b { font-size: 14px; }
-  .badge { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 99px; }
+  .badge { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 99px; cursor: pointer; }
   .badge.on { background: rgba(34,197,94,0.18); color: var(--green); border: 1px solid var(--green); }
   .badge.off { background: rgba(239,68,68,0.2); color: var(--red); border: 1px solid var(--red); }
   .c-meta { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
@@ -78,8 +82,15 @@
 
 <header>
   <div class="title-block">
-    <h1>RESTAURANTE DISTRIBUIDO — SERVICIOS WEB RESTful (Python + Flask)</h1>
-    <p>Práctica 6: Sistemas Distribuidos | Alumno: Ricardo Carmona Martínez | Coordinador: <code id="lblApi">http://127.0.0.1:5000/api</code></p>
+    <h1>RESTAURANTE DISTRIBUIDO — SERVICIOS WEB RESTful</h1>
+    <p>Práctica 6: Sistemas Distribuidos | Alumno: Ricardo Carmona Martínez | ESCOM IPN</p>
+    <div style="margin-top:6px; display:flex; align-items:center; gap:8px;">
+      <span class="mode-badge real" id="modeBadge">🟢 Modo: Servidor Local (REST)</span>
+      <span style="color:var(--muted); font-size:11px;">API:</span>
+      <input id="apiInput" value="http://127.0.0.1:5000/api" style="width:190px; padding:3px 7px; font-size:11px;">
+      <button class="b-gray" style="padding:4px 8px; font-size:11px;" id="btnConectar">Reconectar</button>
+      <button class="b-purple" style="padding:4px 8px; font-size:11px;" id="btnToggleSim">Cambiar a Simulación</button>
+    </div>
   </div>
   <div class="kpis">
     <div class="kpi"><span class="lbl">Cocinas Online</span><span class="val" id="kpiOnline" style="color:var(--green)">3 / 3</span></div>
@@ -89,7 +100,10 @@
   </div>
 </header>
 
-<div class="sec-title">1. Monitoreo de Nodos Cocina (GET /api/cocinas &rarr; GET /api/carga)</div>
+<div class="sec-title">
+  <span>1. Monitoreo de Nodos Cocina (GET /api/cocinas &rarr; GET /api/carga)</span>
+  <span style="font-size:10.5px; color:var(--muted); text-transform:none;">Tip: Puedes hacer clic en el badge ONLINE/OFFLINE para simular una caída de nodo</span>
+</div>
 <div class="cocinas-grid" id="cocinas"></div>
 
 <div class="sec-title">2. Panel de Comensal y Pruebas de Verbos HTTP (POST, PUT, DELETE, GET)</div>
@@ -145,9 +159,39 @@
 </div>
 
 <script>
-const API = "http://127.0.0.1:5000/api";
-const $ = id => document.getElementById(id);
+let API = $("apiInput") ? $("apiInput").value.trim() : "http://127.0.0.1:5000/api";
+function $(id) { return document.getElementById(id); }
 let menu = [], pedidos = [], seq = 1, editIndex = null;
+let useSimulation = (location.hostname !== "127.0.0.1" && location.hostname !== "localhost");
+
+const MENU_DEFAULT = [
+  { id: 1, nombre: "Tacos al Pastor (orden)", segundos: 5, precio: 75.0 },
+  { id: 2, nombre: "Hamburguesa Clásica",     segundos: 7, precio: 115.0 },
+  { id: 3, nombre: "Pizza Individual",        segundos: 6, precio: 125.0 },
+  { id: 4, nombre: "Ensalada César",          segundos: 4, precio: 85.0 },
+  { id: 5, nombre: "Alitas BBQ (12 pzs)",     segundos: 6, precio: 135.0 },
+  { id: 6, nombre: "Corte Ribeye",            segundos: 8, precio: 220.0 }
+];
+
+// Estado del simulador distribuido en memoria (para GitHub Pages / cuando no hay servidor local)
+const simNodos = [
+  { nombre: "Cocina Norte",  puerto: 6001, url: "http://127.0.0.1:6001/api", online: true, atendidos: 0, ventas: 0, estaciones: [{estacion:1, libre:true},{estacion:2, libre:true},{estacion:3, libre:true}], cola: [], seq: 0 },
+  { nombre: "Cocina Centro", puerto: 6002, url: "http://127.0.0.1:6002/api", online: true, atendidos: 0, ventas: 0, estaciones: [{estacion:1, libre:true},{estacion:2, libre:true},{estacion:3, libre:true}], cola: [], seq: 0 },
+  { nombre: "Cocina Sur",    puerto: 6003, url: "http://127.0.0.1:6003/api", online: true, atendidos: 0, ventas: 0, estaciones: [{estacion:1, libre:true},{estacion:2, libre:true},{estacion:3, libre:true}], cola: [], seq: 0 }
+];
+
+function actualizarBadgeModo() {
+  const b = $("modeBadge");
+  if (useSimulation) {
+    b.className = "mode-badge sim";
+    b.textContent = "🟣 Modo: Demostración en Vivo (GitHub Pages)";
+    $("btnToggleSim").textContent = "Cambiar a Servidor Local";
+  } else {
+    b.className = "mode-badge real";
+    b.textContent = "🟢 Modo: Servidor Local (REST :5000)";
+    $("btnToggleSim").textContent = "Cambiar a Simulación";
+  }
+}
 
 function log(msg, cls = "log-2xx") {
   const t = new Date().toTimeString().slice(0, 8);
@@ -158,51 +202,198 @@ function log(msg, cls = "log-2xx") {
   $("consola").scrollTop = $("consola").scrollHeight;
 }
 
+// Cliente HTTP REST con fallback a simulación si falla o si se selecciona simulación
 async function http(method, url, body, silent = false) {
+  if (useSimulation) {
+    return await simularHttp(method, url, body, silent);
+  }
   const opts = { method, headers: { "Content-Type": "application/json" } };
   if (silent) opts.headers["X-Sondeo"] = "1";
   if (body !== undefined) opts.body = JSON.stringify(body);
   const t0 = performance.now();
-  const r = await fetch(url, opts);
-  const ms = Math.round(performance.now() - t0);
-  const data = await r.json().catch(() => ({}));
-  if (!silent) {
-    const u = url.replace("http://127.0.0.1", "");
-    const cls = r.status === 202 ? "log-202" : r.status < 300 ? "log-2xx" : r.status < 500 ? "log-4xx" : "log-5xx";
-    const extra = data.folio ? ` (folio #${data.folio})` : data.cocina ? ` -> ${data.cocina}` : data.mensaje ? ` [${data.mensaje}]` : "";
-    log(`${method.padEnd(6)} ${u} -> ${r.status} ${r.statusText} (${ms} ms)${extra}`, cls);
+  try {
+    const r = await fetch(url, opts);
+    const ms = Math.round(performance.now() - t0);
+    const data = await r.json().catch(() => ({}));
+    if (!silent) {
+      const u = url.replace("http://127.0.0.1", "");
+      const cls = r.status === 202 ? "log-202" : r.status < 300 ? "log-2xx" : r.status < 500 ? "log-4xx" : "log-5xx";
+      const extra = data.folio ? ` (folio #${data.folio})` : data.cocina ? ` -> ${data.cocina}` : data.mensaje ? ` [${data.mensaje}]` : "";
+      log(`${method.padEnd(6)} ${u} -> ${r.status} ${r.statusText} (${ms} ms)${extra}`, cls);
+    }
+    if (!r.ok) throw new Error(`${r.status}: ${data.mensaje || r.statusText}`);
+    return data;
+  } catch (err) {
+    if (!silent && !useSimulation) {
+      log(`Fallo al conectar con ${url}. Activando Modo Simulación...`, "log-4xx");
+      useSimulation = true;
+      actualizarBadgeModo();
+      return await simularHttp(method, url, body, silent);
+    }
+    throw err;
   }
-  if (!r.ok) throw new Error(`${r.status}: ${data.mensaje || r.statusText}`);
-  return data;
+}
+
+// Motor de simulación REST en memoria (reproduce exactamente el comportamiento de cocina.py y coordinador.py)
+async function simularHttp(method, url, body, silent = false) {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const t0 = performance.now();
+  await sleep(15 + Math.random() * 20);
+  const ms = Math.round(performance.now() - t0);
+  const u = url.replace("http://127.0.0.1", "");
+
+  if (url.endsWith("/menu")) {
+    return MENU_DEFAULT;
+  }
+  if (url.endsWith("/cocinas")) {
+    return simNodos.map(c => {
+      const prep = c.estaciones.filter(e => !e.libre).length;
+      const fila = c.cola.length;
+      return {
+        nombre: c.nombre, puerto: c.puerto, url: c.url, online: c.online,
+        carga: c.online ? prep + fila : -1, enFila: fila, preparando: prep,
+        estacionesLibres: c.online ? 3 - prep : 0, totalEstaciones: 3,
+        atendidos: c.atendidos, ventas: c.ventas,
+        estaciones: c.estaciones, cola: c.cola
+      };
+    });
+  }
+  if (url.endsWith("/despachos")) {
+    const comensal = body ? body.comensal : "Comensal";
+    const activas = simNodos.filter(c => c.online);
+    if (!activas.length) {
+      if (!silent) log(`POST   ${u} -> 503 Service Unavailable (${ms} ms) [No hay cocinas activas]`, "log-5xx");
+      throw new Error("503: No hay cocinas activas");
+    }
+    const elegida = activas.reduce((min, c) => {
+      const cargaC = c.estaciones.filter(e => !e.libre).length + c.cola.length;
+      const cargaMin = min.estaciones.filter(e => !e.libre).length + min.cola.length;
+      return cargaC < cargaMin ? c : min;
+    }, activas[0]);
+    if (!silent) log(`POST   ${u} -> 200 OK (${ms} ms) -> ${elegida.nombre}`, "log-2xx");
+    return { comensal, cocina: elegida.nombre, url: elegida.url, carga: elegida.estaciones.filter(e => !e.libre).length + elegida.cola.length };
+  }
+  if (method === "POST" && url.includes("/pedidos")) {
+    const c = simNodos.find(n => url.startsWith(n.url)) || simNodos[0];
+    c.seq++;
+    const plat = MENU_DEFAULT.find(m => m.id === body.idPlatillo) || MENU_DEFAULT[0];
+    const folio = c.seq;
+    const p = {
+      folio, cocina: c.nombre, comensal: body.comensal,
+      idPlatillo: plat.id, platillo: plat.nombre, precio: plat.precio,
+      notas: body.notas || "", estado: "EN_FILA", estacion: 0,
+      segundosTranscurridos: 0, segundosPreparacion: plat.segundos,
+      nodo: c
+    };
+    c.cola.push(p);
+    simularDespachoCocina(c);
+    if (!silent) log(`POST   ${u} -> 202 Accepted (${ms} ms) (folio #${folio})`, "log-202");
+    return p;
+  }
+  if (method === "PUT" && url.includes("/pedidos/")) {
+    const folio = Number(url.split("/").pop());
+    const c = simNodos.find(n => url.startsWith(n.url)) || simNodos[0];
+    const p = c.cola.find(x => x.folio === folio);
+    if (!p) {
+      if (!silent) log(`PUT    ${u} -> 409 Conflict (${ms} ms) [Ya no está en fila o no existe]`, "log-4xx");
+      throw new Error("409: Conflict");
+    }
+    if (body.idPlatillo) {
+      const plat = MENU_DEFAULT.find(m => m.id === body.idPlatillo) || MENU_DEFAULT[0];
+      p.idPlatillo = plat.id; p.platillo = plat.nombre; p.precio = plat.precio; p.segundosPreparacion = plat.segundos;
+    }
+    if (body.notas !== undefined) p.notas = body.notas;
+    if (!silent) log(`PUT    ${u} -> 200 OK (${ms} ms) (folio #${folio})`, "log-2xx");
+    return p;
+  }
+  if (method === "DELETE" && url.includes("/pedidos/")) {
+    const folio = Number(url.split("/").pop());
+    const c = simNodos.find(n => url.startsWith(n.url)) || simNodos[0];
+    const idx = c.cola.findIndex(x => x.folio === folio);
+    if (idx === -1) {
+      if (!silent) log(`DELETE ${u} -> 409 Conflict (${ms} ms) [Ya no está en fila]`, "log-4xx");
+      throw new Error("409: Conflict");
+    }
+    const p = c.cola.splice(idx, 1)[0];
+    p.estado = "CANCELADO";
+    if (!silent) log(`DELETE ${u} -> 200 OK (${ms} ms) (folio #${folio})`, "log-2xx");
+    return p;
+  }
+  if (method === "GET" && url.includes("/pedidos/9999")) {
+    if (!silent) log(`GET    ${u} -> 404 Not Found (${ms} ms) [No existe el folio 9999]`, "log-4xx");
+    throw new Error("404: Not Found");
+  }
+  return {};
+}
+
+function simularDespachoCocina(c) {
+  if (!c.online || !c.cola.length) return;
+  const estLibre = c.estaciones.find(e => e.libre);
+  if (!estLibre) return;
+  const p = c.cola.shift();
+  estLibre.libre = false;
+  estLibre.folio = p.folio;
+  estLibre.comensal = p.comensal;
+  estLibre.platillo = p.platillo;
+  estLibre.progreso = `0/${p.segundosPreparacion}s`;
+  p.estado = "PREPARANDO";
+  p.estacion = estLibre.estacion;
+
+  const timer = setInterval(() => {
+    p.segundosTranscurridos++;
+    estLibre.progreso = `${p.segundosTranscurridos}/${p.segundosPreparacion}s`;
+    if (p.segundosTranscurridos >= p.segundosPreparacion) {
+      clearInterval(timer);
+      p.estado = "LISTO";
+      estLibre.libre = true;
+      estLibre.folio = null; estLibre.comensal = null; estLibre.platillo = null; estLibre.progreso = "Libre";
+      c.atendidos++;
+      c.ventas += p.precio;
+      simularDespachoCocina(c);
+      refrescarCocinas();
+      pintarPedidos();
+    }
+  }, 1000);
 }
 
 async function cargarMenu() {
-  menu = await http("GET", `${API}/menu`);
+  try {
+    menu = await http("GET", `${API}/menu`);
+  } catch (e) {
+    menu = MENU_DEFAULT;
+  }
   const opts = menu.map(p => `<option value="${p.id}">${p.id}. ${p.nombre} ($${p.precio.toFixed(0)} - ${p.segundos}s)</option>`).join("");
   $("platillo").innerHTML = opts;
   $("modalPlatillo").innerHTML = opts;
+}
+
+function toggleCocinaOnline(idx) {
+  simNodos[idx].online = !simNodos[idx].online;
+  log(`TOLERANCIA A FALLOS: ${simNodos[idx].nombre} marcada como ${simNodos[idx].online ? 'ONLINE' : 'OFFLINE'}`, simNodos[idx].online ? 'log-2xx' : 'log-5xx');
+  if (simNodos[idx].online) simularDespachoCocina(simNodos[idx]);
+  refrescarCocinas();
 }
 
 async function refrescarCocinas() {
   try {
     const cs = await http("GET", `${API}/cocinas`, undefined, true);
     let on = 0, carga = 0, listos = 0, ventas = 0;
-    $("cocinas").innerHTML = cs.map(c => {
-      if (c.online) { on++; carga += c.carga; listos += c.atendidos; ventas += c.ventas; }
+    $("cocinas").innerHTML = cs.map((c, i) => {
+      if (c.online) { on++; carga += (c.carga >= 0 ? c.carga : 0); listos += c.atendidos; ventas += c.ventas; }
       const estHtml = (c.estaciones && c.estaciones.length ? c.estaciones : [1,2,3].map(n => ({estacion:n, libre:true}))).map(e => `
         <div class="est ${e.libre ? 'libre' : 'ocupada'}">
           <b>Estación #${e.estacion}</b>
           <div class="e-txt" style="color:${e.libre ? 'var(--green)' : '#60a5fa'}">
-            ${e.libre ? 'LIBRE' : `#${e.folio} ${e.platillo.split(' ')[0]} (${e.progreso})`}
+            ${e.libre ? 'LIBRE' : `#${e.folio} ${e.platillo ? e.platillo.split(' ')[0] : ''} (${e.progreso})`}
           </div>
         </div>`).join("");
       const colaTxt = !c.online ? "Nodo fuera de línea (OFFLINE)" :
-        (c.cola && c.cola.length ? "Cola FIFO: " + c.cola.map(q => `#${q.folio} ${q.platillo.split(' ')[0]}`).join(", ") : "Cola FIFO vacía (0 en espera)");
+        (c.cola && c.cola.length ? "Cola FIFO: " + c.cola.map(q => `#${q.folio} ${q.platillo ? q.platillo.split(' ')[0] : ''}`).join(", ") : "Cola FIFO vacía (0 en espera)");
       return `
         <div class="cocina-card ${c.online ? '' : 'off'}">
           <div class="c-head">
             <b>${c.nombre} <span style="color:var(--muted);font-weight:400;font-size:11.5px">(:${c.puerto})</span></b>
-            <span class="badge ${c.online ? 'on' : 'off'}">${c.online ? 'ONLINE' : 'OFFLINE'}</span>
+            <span class="badge ${c.online ? 'on' : 'off'}" onclick="toggleCocinaOnline(${i})" title="Haz clic para alternar ONLINE/OFFLINE">${c.online ? 'ONLINE' : 'OFFLINE'}</span>
           </div>
           <div class="c-meta">
             <span>Carga: <b style="color:var(--amber)">${c.online ? c.carga : '--'}</b> (Fila: ${c.enFila})</span>
@@ -268,6 +459,10 @@ async function cancelar(i) {
 }
 
 async function sondearPedidos() {
+  if (useSimulation) {
+    pintarPedidos();
+    return;
+  }
   for (const p of pedidos) {
     if (p.datos.estado === "LISTO" || p.datos.estado === "CANCELADO") continue;
     try {
@@ -306,28 +501,47 @@ $("btnRafaga").onclick = async () => {
   for (let k = 0; k < 12; k++) enviarPedido(menu[k % menu.length].id, "");
 };
 $("btn404").onclick = async () => {
-  try { await http("GET", "http://127.0.0.1:6001/api/pedidos/9999"); } catch (e) {}
+  try { await http("GET", `${API.replace(/\/api$/, "")}:6001/api/pedidos/9999`); } catch (e) {}
 };
 $("btnLimpiar").onclick = () => { $("consola").innerHTML = ""; };
+
+$("btnConectar").onclick = () => {
+  API = $("apiInput").value.trim();
+  useSimulation = false;
+  actualizarBadgeModo();
+  log(`Intentando conectar con API: ${API}...`, "log-2xx");
+  cargarMenu().then(refrescarCocinas);
+};
+
+$("btnToggleSim").onclick = () => {
+  useSimulation = !useSimulation;
+  actualizarBadgeModo();
+  log(`Modo cambiado a: ${useSimulation ? 'Simulación en Vivo (GitHub Pages)' : 'Servidor REST Local'}`, "log-202");
+  cargarMenu().then(refrescarCocinas);
+};
 
 async function ejecutarDemo() {
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   log("=== INICIANDO DEMO: Ráfaga de 12 pedidos + PUT + DELETE + Error 404 ===", "log-202");
-  await Promise.all(Array.from({ length: 12 }, (_, k) => enviarPedido(menu[k % menu.length].id, "")));
+  for (let k = 0; k < 12; k++) await enviarPedido(menu[k % menu.length].id, "");
   await sleep(900);
-  const enFila = pedidos.filter(p => p.datos.estado === "EN_FILA");
-  if (enFila[0]) {
-    enFila[0].datos = await http("PUT", `${enFila[0].url}/pedidos/${enFila[0].folio}`, { idPlatillo: 4, notas: "sin crutones (PUT)" });
+  const idxPut = pedidos.findIndex(p => p.datos.estado === "EN_FILA");
+  if (idxPut >= 0) {
+    const p = pedidos[idxPut];
+    p.datos = await http("PUT", `${p.url}/pedidos/${p.folio}`, { idPlatillo: 4, notas: "sin crutones (PUT)" });
   }
-  if (enFila[1]) {
-    enFila[1].datos = await http("DELETE", `${enFila[1].url}/pedidos/${enFila[1].folio}`);
+  const idxDel = pedidos.findIndex((p, i) => i !== idxPut && p.datos.estado === "EN_FILA");
+  if (idxDel >= 0) {
+    const p = pedidos[idxDel];
+    p.datos = await http("DELETE", `${p.url}/pedidos/${p.folio}`);
   }
   pintarPedidos();
   refrescarCocinas();
-  try { await http("GET", "http://127.0.0.1:6001/api/pedidos/9999"); } catch (e) {}
+  try { await http("GET", `${API.replace(/\/api$/, "")}:6001/api/pedidos/9999`); } catch (e) {}
 }
 $("btnDemo").onclick = ejecutarDemo;
 
+actualizarBadgeModo();
 cargarMenu().then(() => {
   refrescarCocinas();
   if (new URLSearchParams(location.search).has("demo")) setTimeout(ejecutarDemo, 600);

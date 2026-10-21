@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P6 — Restaurante Distribuido REST (Servicios Web)</title>
+<style>
+  :root {
+    --bg: #0f131d; --card: #181e2e; --card2: #121724; --border: #2a334d;
+    --txt: #f3f4f6; --muted: #9ca3af; --blue: #3b82f6; --green: #22c55e;
+    --amber: #f59e0b; --red: #ef4444; --purple: #8b5cf6; --teal: #14b8a6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--txt); padding: 14px 18px; font-size: 13px; }
+  header { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+  .title-block h1 { font-size: 16px; font-weight: 800; letter-spacing: 0.3px; color: #fff; }
+  .title-block p { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .mode-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 99px; margin-top: 4px; }
+  .mode-badge.real { background: rgba(34,197,94,0.18); color: var(--green); border: 1px solid var(--green); }
+  .mode-badge.sim { background: rgba(139,92,246,0.18); color: #c084fc; border: 1px solid var(--purple); }
+
+  .kpis { display: flex; gap: 10px; flex-wrap: wrap; }
+  .kpi { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; text-align: center; min-width: 110px; }
+  .kpi .lbl { font-size: 10px; text-transform: uppercase; color: var(--muted); display: block; }
+  .kpi .val { font-size: 15px; font-weight: 800; margin-top: 2px; display: block; }
+
+  .sec-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin: 8px 0 6px; display: flex; justify-content: space-between; align-items: center; }
+  .cocinas-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
+  .cocina-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px; position: relative; transition: border-color 0.2s; }
+  .cocina-card.off { border-color: #7f1d1d; background: #1a1218; opacity: 0.88; }
+  .c-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .c-head b { font-size: 14px; }
+  .badge { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 99px; cursor: pointer; }
+  .badge.on { background: rgba(34,197,94,0.18); color: var(--green); border: 1px solid var(--green); }
+  .badge.off { background: rgba(239,68,68,0.2); color: var(--red); border: 1px solid var(--red); }
+  .c-meta { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .estaciones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 7px; }
+  .est { background: var(--card2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 7px; font-size: 11px; }
+  .est.libre { border-left: 3px solid var(--green); }
+  .est.ocupada { border-left: 3px solid var(--blue); background: #152238; }
+  .est b { display: block; font-size: 10.5px; color: var(--muted); }
+  .est .e-txt { font-weight: 700; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cola-box { font-size: 11px; color: var(--amber); background: rgba(245,158,11,0.08); border: 1px dashed rgba(245,158,11,0.35); border-radius: 6px; padding: 4px 8px; min-height: 24px; }
+
+  .toolbar { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .toolbar label { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+  input, select { background: var(--card2); color: var(--txt); border: 1px solid var(--border); border-radius: 6px; padding: 6px 9px; font-size: 12.5px; }
+  button { border: none; border-radius: 6px; padding: 7px 12px; font-weight: 700; font-size: 12px; color: #fff; cursor: pointer; transition: opacity 0.15s; }
+  button:hover:not(:disabled) { opacity: 0.88; }
+  button:disabled { opacity: 0.32; cursor: not-allowed; }
+  .b-blue { background: var(--blue); } .b-purple { background: var(--purple); }
+  .b-teal { background: var(--teal); padding: 4px 8px; font-size: 11px; }
+  .b-red { background: var(--red); padding: 4px 8px; font-size: 11px; }
+  .b-amber { background: var(--amber); color: #111; } .b-gray { background: #374151; }
+
+  .main-split { display: grid; grid-template-columns: 1.55fr 1fr; gap: 12px; }
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; height: 365px; }
+  .panel h3 { font-size: 12px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; display: flex; justify-content: space-between; }
+  .table-wrap { overflow-y: auto; flex: 1; border: 1px solid var(--border); border-radius: 6px; background: var(--card2); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { position: sticky; top: 0; background: #1e263b; color: var(--muted); text-align: left; padding: 7px 8px; font-size: 11px; text-transform: uppercase; }
+  td { padding: 6px 8px; border-bottom: 1px solid #1f293d; }
+  .st { font-weight: 800; padding: 2px 7px; border-radius: 4px; font-size: 10.5px; display: inline-block; }
+  .EN_FILA { background: rgba(245,158,11,0.18); color: var(--amber); }
+  .PREPARANDO { background: rgba(59,130,246,0.2); color: #60a5fa; }
+  .LISTO { background: rgba(34,197,94,0.18); color: var(--green); }
+  .CANCELADO { background: rgba(239,68,68,0.2); color: var(--red); }
+
+  #consola { flex: 1; background: #0a0d14; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-family: 'Consolas', monospace; font-size: 11.5px; overflow-y: auto; white-space: pre-wrap; line-height: 1.45; }
+  .log-2xx { color: #4ade80; } .log-202 { color: #60a5fa; } .log-4xx { color: #fbbf24; } .log-5xx { color: #f87171; }
+
+  /* Modal PUT */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none; align-items: center; justify-content: center; z-index: 50; }
+  .modal-bg.active { display: flex; }
+  .modal { background: var(--card); border: 1px solid var(--blue); border-radius: 10px; padding: 16px 20px; width: 360px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); }
+  .modal h4 { font-size: 14px; margin-bottom: 10px; color: #fff; }
+  .modal .row { margin-bottom: 10px; display: flex; flex-direction: column; gap: 4px; }
+  .modal .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-block">
+    <h1>RESTAURANTE DISTRIBUIDO — SERVICIOS WEB RESTful</h1>
+    <p>Práctica 6: Sistemas Distribuidos | Alumno: Ricardo Carmona Martínez | ESCOM IPN</p>
+    <div style="margin-top:6px; display:flex; align-items:center; gap:8px;">
+      <span class="mode-badge real" id="modeBadge">🟢 Modo: Servidor Local (REST)</span>
+      <span style="color:var(--muted); font-size:11px;">API:</span>
+      <input id="apiInput" value="http://127.0.0.1:5000/api" style="width:190px; padding:3px 7px; font-size:11px;">
+      <button class="b-gray" style="padding:4px 8px; font-size:11px;" id="btnConectar">Reconectar</button>
+      <button class="b-purple" style="padding:4px 8px; font-size:11px;" id="btnToggleSim">Cambiar a Simulación</button>
+    </div>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><span class="lbl">Cocinas Online</span><span class="val" id="kpiOnline" style="color:var(--green)">3 / 3</span></div>
+    <div class="kpi"><span class="lbl">Carga Activa</span><span class="val" id="kpiCarga" style="color:var(--amber)">0</span></div>
+    <div class="kpi"><span class="lbl">Platillos Listos</span><span class="val" id="kpiListos" style="color:var(--blue)">0</span></div>
+    <div class="kpi"><span class="lbl">Ventas Totales</span><span class="val" id="kpiVentas" style="color:var(--green)">$0.00</span></div>
+  </div>
+</header>
+
+<div class="sec-title">
+  <span>1. Monitoreo de Nodos Cocina (GET /api/cocinas &rarr; GET /api/carga)</span>
+  <span style="font-size:10.5px; color:var(--muted); text-transform:none;">Tip: Puedes hacer clic en el badge ONLINE/OFFLINE para simular una caída de nodo</span>
+</div>
+<div class="cocinas-grid" id="cocinas"></div>
+
+<div class="sec-title">2. Panel de Comensal y Pruebas de Verbos HTTP (POST, PUT, DELETE, GET)</div>
+<div class="toolbar">
+  <label>Comensal:</label>
+  <input id="comensal" value="Ricardo" style="width:110px">
+  <label>Platillo:</label>
+  <select id="platillo" style="min-width:210px"></select>
+  <label>Notas:</label>
+  <input id="notas" placeholder="ej. sin cebolla, extra salsa" style="width:170px">
+  <button class="b-blue" id="btnPedir">Enviar Pedido (POST)</button>
+  <button class="b-purple" id="btnRafaga">Ráfaga (12 Pedidos)</button>
+  <button class="b-amber" id="btnDemo">Demo Completa (PUT + DELETE + 404)</button>
+  <button class="b-gray" id="btn404">Probar 404</button>
+</div>
+
+<div class="main-split">
+  <div class="panel">
+    <h3><span>3. Pedidos del Comensal (Sondeo GET /api/pedidos/{folio})</span><span id="lblTotalPedidos">0 pedidos</span></h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Folio</th><th>Comensal</th><th>Cocina</th><th>Platillo</th><th>Notas</th><th>Estado</th><th>Detalle</th><th>Acciones</th></tr>
+        </thead>
+        <tbody id="pedidos">
+          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Sin pedidos aún. Usa «Enviar Pedido» o «Ráfaga (12 Pedidos)».</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="panel">
+    <h3><span>4. Bitácora HTTP en Vivo (Verbos y Códigos de Estado)</span><span style="cursor:pointer;color:var(--blue)" id="btnLimpiar">Limpiar</span></h3>
+    <div id="consola"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalPut">
+  <div class="modal">
+    <h4 id="modalTitulo">Modificar Pedido en Fila (PUT)</h4>
+    <div class="row">
+      <label>Nuevo Platillo:</label>
+      <select id="modalPlatillo"></select>
+    </div>
+    <div class="row">
+      <label>Notas Especiales:</label>
+      <input id="modalNotas" placeholder="ej. sin crutones">
+    </div>
+    <div class="actions">
+      <button class="b-gray" onclick="cerrarModal()">Cancelar</button>
+      <button class="b-blue" id="btnGuardarPut">Guardar PUT</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let API = $("apiInput") ? $("apiInput").value.trim() : "http://127.0.0.1:5000/api";
+function $(id) { return document.getElementById(id); }
+let menu = [], pedidos = [], seq = 1, editIndex = null;
+let useSimulation = (location.hostname !== "127.0.0.1" && location.hostname !== "localhost");
+
+const MENU_DEFAULT = [
+  { id: 1, nombre: "Tacos al Pastor (orden)", segundos: 5, precio: 75.0 },
+  { id: 2, nombre: "Hamburguesa Clásica",     segundos: 7, precio: 115.0 },
+  { id: 3, nombre: "Pizza Individual",        segundos: 6, precio: 125.0 },
+  { id: 4, nombre: "Ensalada César",          segundos: 4, precio: 85.0 },
+  { id: 5, nombre: "Alitas BBQ (12 pzs)",     segundos: 6, precio: 135.0 },
+  { id: 6, nombre: "Corte Ribeye",            segundos: 8, precio: 220.0 }
+];
+
+// Estado del simulador distribuido en memoria (para GitHub Pages / cuando no hay servidor local)
+const simNodos = [
+  { nombre: "Cocina Norte",  puerto: 6001, url: "http://127.0.0.1:6001/api", online: true, atendidos: 0, ventas: 0, estaciones: [{estacion:1, libre:true},{estacion:2, libre:true},{estacion:3, libre:true}], cola: [], seq: 0 },
+  { nombre: "Cocina Centro", puerto: 6002, url: "http://127.0.0.1:6002/api", online: true, atendidos: 0, ventas: 0, estaciones: [{estacion:1, libre:true},{estacion:2, libre:true},{estacion:3, libre:true}], cola: [], seq: 0 },
+  { nombre: "Cocina Sur",    puerto: 6003, url: "http://127.0.0.1:6003/api", online: true, atendidos: 0, ventas: 0, estaciones: [{estacion:1, libre:true},{estacion:2, libre:true},{estacion:3, libre:true}], cola: [], seq: 0 }
+];
+
+function actualizarBadgeModo() {
+  const b = $("modeBadge");
+  if (useSimulation) {
+    b.className = "mode-badge sim";
+    b.textContent = "🟣 Modo: Demostración en Vivo (GitHub Pages)";
+    $("btnToggleSim").textContent = "Cambiar a Servidor Local";
+  } else {
+    b.className = "mode-badge real";
+    b.textContent = "🟢 Modo: Servidor Local (REST :5000)";
+    $("btnToggleSim").textContent = "Cambiar a Simulación";
+  }
+}
+
+function log(msg, cls = "log-2xx") {
+  const t = new Date().toTimeString().slice(0, 8);
+  const div = document.createElement("div");
+  div.className = cls;
+  div.textContent = `[${t}] ${msg}`;
+  $("consola").appendChild(div);
+  $("consola").scrollTop = $("consola").scrollHeight;
+}
+
+// Cliente HTTP REST con fallback a simulación si falla o si se selecciona simulación
+async function http(method, url, body, silent = false) {
+  if (useSimulation) {
+    return await simularHttp(method, url, body, silent);
+  }
+  const opts = { method, headers: { "Content-Type": "application/json" } };
+  if (silent) opts.headers["X-Sondeo"] = "1";
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  const t0 = performance.now();
+  try {
+    const r = await fetch(url, opts);
+    const ms = Math.round(performance.now() - t0);
+    const data = await r.json().catch(() => ({}));
+    if (!silent) {
+      const u = url.replace("http://127.0.0.1", "");
+      const cls = r.status === 202 ? "log-202" : r.status < 300 ? "log-2xx" : r.status < 500 ? "log-4xx" : "log-5xx";
+      const extra = data.folio ? ` (folio #${data.folio})` : data.cocina ? ` -> ${data.cocina}` : data.mensaje ? ` [${data.mensaje}]` : "";
+      log(`${method.padEnd(6)} ${u} -> ${r.status} ${r.statusText} (${ms} ms)${extra}`, cls);
+    }
+    if (!r.ok) throw new Error(`${r.status}: ${data.mensaje || r.statusText}`);
+    return data;
+  } catch (err) {
+    if (!silent && !useSimulation) {
+      log(`Fallo al conectar con ${url}. Activando Modo Simulación...`, "log-4xx");
+      useSimulation = true;
+      actualizarBadgeModo();
+      return await simularHttp(method, url, body, silent);
+    }
+    throw err;
+  }
+}
+
+// Motor de simulación REST en memoria (reproduce exactamente el comportamiento de cocina.py y coordinador.py)
+async function simularHttp(method, url, body, silent = false) {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const t0 = performance.now();
+  await sleep(15 + Math.random() * 20);
+  const ms = Math.round(performance.now() - t0);
+  const u = url.replace("http://127.0.0.1", "");
+
+  if (url.endsWith("/menu")) {
+    return MENU_DEFAULT;
+  }
+  if (url.endsWith("/cocinas")) {
+    return simNodos.map(c => {
+      const prep = c.estaciones.filter(e => !e.libre).length;
+      const fila = c.cola.length;
+      return {
+        nombre: c.nombre, puerto: c.puerto, url: c.url, online: c.online,
+        carga: c.online ? prep + fila : -1, enFila: fila, preparando: prep,
+        estacionesLibres: c.online ? 3 - prep : 0, totalEstaciones: 3,
+        atendidos: c.atendidos, ventas: c.ventas,
+        estaciones: c.estaciones, cola: c.cola
+      };
+    });
+  }
+  if (url.endsWith("/despachos")) {
+    const comensal = body ? body.comensal : "Comensal";
+    const activas = simNodos.filter(c => c.online);
+    if (!activas.length) {
+      if (!silent) log(`POST   ${u} -> 503 Service Unavailable (${ms} ms) [No hay cocinas activas]`, "log-5xx");
+      throw new Error("503: No hay cocinas activas");
+    }
+    const elegida = activas.reduce((min, c) => {
+      const cargaC = c.estaciones.filter(e => !e.libre).length + c.cola.length;
+      const cargaMin = min.estaciones.filter(e => !e.libre).length + min.cola.length;
+      return cargaC < cargaMin ? c : min;
+    }, activas[0]);
+    if (!silent) log(`POST   ${u} -> 200 OK (${ms} ms) -> ${elegida.nombre}`, "log-2xx");
+    return { comensal, cocina: elegida.nombre, url: elegida.url, carga: elegida.estaciones.filter(e => !e.libre).length + elegida.cola.length };
+  }
+  if (method === "POST" && url.includes("/pedidos")) {
+    const c = simNodos.find(n => url.startsWith(n.url)) || simNodos[0];
+    c.seq++;
+    const plat = MENU_DEFAULT.find(m => m.id === body.idPlatillo) || MENU_DEFAULT[0];
+    const folio = c.seq;
+    const p = {
+      folio, cocina: c.nombre, comensal: body.comensal,
+      idPlatillo: plat.id, platillo: plat.nombre, precio: plat.precio,
+      notas: body.notas || "", estado: "EN_FILA", estacion: 0,
+      segundosTranscurridos: 0, segundosPreparacion: plat.segundos,
+      nodo: c
+    };
+    c.cola.push(p);
+    simularDespachoCocina(c);
+    if (!silent) log(`POST   ${u} -> 202 Accepted (${ms} ms) (folio #${folio})`, "log-202");
+    return p;
+  }
+  if (method === "PUT" && url.includes("/pedidos/")) {
+    const folio = Number(url.split("/").pop());
+    const c = simNodos.find(n => url.startsWith(n.url)) || simNodos[0];
+    const p = c.cola.find(x => x.folio === folio);
+    if (!p) {
+      if (!silent) log(`PUT    ${u} -> 409 Conflict (${ms} ms) [Ya no está en fila o no existe]`, "log-4xx");
+      throw new Error("409: Conflict");
+    }
+    if (body.idPlatillo) {
+      const plat = MENU_DEFAULT.find(m => m.id === body.idPlatillo) || MENU_DEFAULT[0];
+      p.idPlatillo = plat.id; p.platillo = plat.nombre; p.precio = plat.precio; p.segundosPreparacion = plat.segundos;
+    }
+    if (body.notas !== undefined) p.notas = body.notas;
+    if (!silent) log(`PUT    ${u} -> 200 OK (${ms} ms) (folio #${folio})`, "log-2xx");
+    return p;
+  }
+  if (method === "DELETE" && url.includes("/pedidos/")) {
+    const folio = Number(url.split("/").pop());
+    const c = simNodos.find(n => url.startsWith(n.url)) || simNodos[0];
+    const idx = c.cola.findIndex(x => x.folio === folio);
+    if (idx === -1) {
+      if (!silent) log(`DELETE ${u} -> 409 Conflict (${ms} ms) [Ya no está en fila]`, "log-4xx");
+      throw new Error("409: Conflict");
+    }
+    const p = c.cola.splice(idx, 1)[0];
+    p.estado = "CANCELADO";
+    if (!silent) log(`DELETE ${u} -> 200 OK (${ms} ms) (folio #${folio})`, "log-2xx");
+    return p;
+  }
+  if (method === "GET" && url.includes("/pedidos/9999")) {
+    if (!silent) log(`GET    ${u} -> 404 Not Found (${ms} ms) [No existe el folio 9999]`, "log-4xx");
+    throw new Error("404: Not Found");
+  }
+  return {};
+}
+
+function simularDespachoCocina(c) {
+  if (!c.online || !c.cola.length) return;
+  const estLibre = c.estaciones.find(e => e.libre);
+  if (!estLibre) return;
+  const p = c.cola.shift();
+  estLibre.libre = false;
+  estLibre.folio = p.folio;
+  estLibre.comensal = p.comensal;
+  estLibre.platillo = p.platillo;
+  estLibre.progreso = `0/${p.segundosPreparacion}s`;
+  p.estado = "PREPARANDO";
+  p.estacion = estLibre.estacion;
+
+  const timer = setInterval(() => {
+    p.segundosTranscurridos++;
+    estLibre.progreso = `${p.segundosTranscurridos}/${p.segundosPreparacion}s`;
+    if (p.segundosTranscurridos >= p.segundosPreparacion) {
+      clearInterval(timer);
+      p.estado = "LISTO";
+      estLibre.libre = true;
+      estLibre.folio = null; estLibre.comensal = null; estLibre.platillo = null; estLibre.progreso = "Libre";
+      c.atendidos++;
+      c.ventas += p.precio;
+      simularDespachoCocina(c);
+      refrescarCocinas();
+      pintarPedidos();
+    }
+  }, 1000);
+}
+
+async function cargarMenu() {
+  try {
+    menu = await http("GET", `${API}/menu`);
+  } catch (e) {
+    menu = MENU_DEFAULT;
+  }
+  const opts = menu.map(p => `<option value="${p.id}">${p.id}. ${p.nombre} ($${p.precio.toFixed(0)} - ${p.segundos}s)</option>`).join("");
+  $("platillo").innerHTML = opts;
+  $("modalPlatillo").innerHTML = opts;
+}
+
+function toggleCocinaOnline(idx) {
+  simNodos[idx].online = !simNodos[idx].online;
+  log(`TOLERANCIA A FALLOS: ${simNodos[idx].nombre} marcada como ${simNodos[idx].online ? 'ONLINE' : 'OFFLINE'}`, simNodos[idx].online ? 'log-2xx' : 'log-5xx');
+  if (simNodos[idx].online) simularDespachoCocina(simNodos[idx]);
+  refrescarCocinas();
+}
+
+async function refrescarCocinas() {
+  try {
+    const cs = await http("GET", `${API}/cocinas`, undefined, true);
+    let on = 0, carga = 0, listos = 0, ventas = 0;
+    $("cocinas").innerHTML = cs.map((c, i) => {
+      if (c.online) { on++; carga += (c.carga >= 0 ? c.carga : 0); listos += c.atendidos; ventas += c.ventas; }
+      const estHtml = (c.estaciones && c.estaciones.length ? c.estaciones : [1,2,3].map(n => ({estacion:n, libre:true}))).map(e => `
+        <div class="est ${e.libre ? 'libre' : 'ocupada'}">
+          <b>Estación #${e.estacion}</b>
+          <div class="e-txt" style="color:${e.libre ? 'var(--green)' : '#60a5fa'}">
+            ${e.libre ? 'LIBRE' : `#${e.folio} ${e.platillo ? e.platillo.split(' ')[0] : ''} (${e.progreso})`}
+          </div>
+        </div>`).join("");
+      const colaTxt = !c.online ? "Nodo fuera de línea (OFFLINE)" :
+        (c.cola && c.cola.length ? "Cola FIFO: " + c.cola.map(q => `#${q.folio} ${q.platillo ? q.platillo.split(' ')[0] : ''}`).join(", ") : "Cola FIFO vacía (0 en espera)");
+      return `
+        <div class="cocina-card ${c.online ? '' : 'off'}">
+          <div class="c-head">
+            <b>${c.nombre} <span style="color:var(--muted);font-weight:400;font-size:11.5px">(:${c.puerto})</span></b>
+            <span class="badge ${c.online ? 'on' : 'off'}" onclick="toggleCocinaOnline(${i})" title="Haz clic para alternar ONLINE/OFFLINE">${c.online ? 'ONLINE' : 'OFFLINE'}</span>
+          </div>
+          <div class="c-meta">
+            <span>Carga: <b style="color:var(--amber)">${c.online ? c.carga : '--'}</b> (Fila: ${c.enFila})</span>
+            <span>Libres: <b>${c.online ? c.estacionesLibres + '/3' : '--'}</b></span>
+            <span>Listos: <b style="color:var(--green)">${c.atendidos}</b> ($${c.ventas.toFixed(0)})</span>
+          </div>
+          <div class="estaciones">${estHtml}</div>
+          <div class="cola-box">${colaTxt}</div>
+        </div>`;
+    }).join("");
+    $("kpiOnline").textContent = `${on} / ${cs.length}`;
+    $("kpiOnline").style.color = on === cs.length ? "var(--green)" : on > 0 ? "var(--amber)" : "var(--red)";
+    $("kpiCarga").textContent = carga;
+    $("kpiListos").textContent = listos;
+    $("kpiVentas").textContent = `$${ventas.toFixed(2)}`;
+  } catch (e) {
+    $("kpiOnline").textContent = "0 / 3";
+  }
+}
+
+async function enviarPedido(idPlatillo, notas) {
+  const base = ($("comensal").value.trim() || "Comensal").replace(/\s+/g, "_");
+  const comensal = `${base}#${String(seq++).padStart(3, "0")}`;
+  try {
+    const asig = await http("POST", `${API}/despachos`, { comensal });
+    const datos = await http("POST", `${asig.url}/pedidos`, { comensal, idPlatillo, notas });
+    pedidos.unshift({ folio: datos.folio, comensal, cocina: asig.cocina, url: asig.url, datos });
+    pintarPedidos();
+    refrescarCocinas();
+  } catch (e) { /* registrado en bitácora */ }
+}
+
+function abrirModalPut(i) {
+  editIndex = i;
+  const p = pedidos[i];
+  $("modalTitulo").textContent = `PUT /api/pedidos/${p.folio} (${p.cocina})`;
+  $("modalPlatillo").value = p.datos.idPlatillo;
+  $("modalNotas").value = p.datos.notas || "";
+  $("modalPut").classList.add("active");
+}
+function cerrarModal() { $("modalPut").classList.remove("active"); editIndex = null; }
+
+$("btnGuardarPut").onclick = async () => {
+  if (editIndex === null) return;
+  const p = pedidos[editIndex];
+  const idPlatillo = Number($("modalPlatillo").value);
+  const notas = $("modalNotas").value.trim();
+  cerrarModal();
+  try {
+    p.datos = await http("PUT", `${p.url}/pedidos/${p.folio}`, { idPlatillo, notas });
+    pintarPedidos();
+    refrescarCocinas();
+  } catch (e) {}
+};
+
+async function cancelar(i) {
+  const p = pedidos[i];
+  try {
+    p.datos = await http("DELETE", `${p.url}/pedidos/${p.folio}`);
+    pintarPedidos();
+    refrescarCocinas();
+  } catch (e) {}
+}
+
+async function sondearPedidos() {
+  if (useSimulation) {
+    pintarPedidos();
+    return;
+  }
+  for (const p of pedidos) {
+    if (p.datos.estado === "LISTO" || p.datos.estado === "CANCELADO") continue;
+    try {
+      const prev = p.datos.estado;
+      p.datos = await http("GET", `${p.url}/pedidos/${p.folio}`, undefined, true);
+      if (prev !== p.datos.estado) {
+        log(`ESTADO [${p.comensal}] Folio #${p.folio} en ${p.cocina}: ${prev} -> ${p.datos.estado}`, "log-2xx");
+      }
+    } catch (e) {}
+  }
+  pintarPedidos();
+}
+
+function pintarPedidos() {
+  $("lblTotalPedidos").textContent = `${pedidos.length} pedidos`;
+  if (!pedidos.length) return;
+  $("pedidos").innerHTML = pedidos.map((p, i) => {
+    const d = p.datos, enFila = d.estado === "EN_FILA";
+    const det = d.estado === "EN_FILA" ? "En cola FIFO (202)" :
+                d.estado === "PREPARANDO" ? `Est. #${d.estacion} (${d.segundosTranscurridos}/${d.segundosPreparacion}s)` :
+                d.estado === "LISTO" ? `Est. #${d.estacion} | $${d.precio.toFixed(2)}` : "Cancelado (DELETE)";
+    return `<tr>
+      <td><b>#${d.folio}</b></td><td>${p.comensal}</td><td>${p.cocina}</td><td>${d.platillo}</td>
+      <td style="color:var(--amber)">${d.notas || '-'}</td>
+      <td><span class="st ${d.estado}">${d.estado}</span></td><td>${det}</td>
+      <td>
+        <button class="b-teal" ${enFila ? "" : "disabled"} onclick="abrirModalPut(${i})">PUT</button>
+        <button class="b-red" ${enFila ? "" : "disabled"} onclick="cancelar(${i})">DELETE</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+$("btnPedir").onclick = () => enviarPedido(Number($("platillo").value), $("notas").value.trim());
+$("btnRafaga").onclick = async () => {
+  for (let k = 0; k < 12; k++) enviarPedido(menu[k % menu.length].id, "");
+};
+$("btn404").onclick = async () => {
+  try { await http("GET", `${API.replace(/\/api$/, "")}:6001/api/pedidos/9999`); } catch (e) {}
+};
+$("btnLimpiar").onclick = () => { $("consola").innerHTML = ""; };
+
+$("btnConectar").onclick = () => {
+  API = $("apiInput").value.trim();
+  useSimulation = false;
+  actualizarBadgeModo();
+  log(`Intentando conectar con API: ${API}...`, "log-2xx");
+  cargarMenu().then(refrescarCocinas);
+};
+
+$("btnToggleSim").onclick = () => {
+  useSimulation = !useSimulation;
+  actualizarBadgeModo();
+  log(`Modo cambiado a: ${useSimulation ? 'Simulación en Vivo (GitHub Pages)' : 'Servidor REST Local'}`, "log-202");
+  cargarMenu().then(refrescarCocinas);
+};
+
+async function ejecutarDemo() {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  log("=== INICIANDO DEMO: Ráfaga de 12 pedidos + PUT + DELETE + Error 404 ===", "log-202");
+  for (let k = 0; k < 12; k++) await enviarPedido(menu[k % menu.length].id, "");
+  await sleep(900);
+  const idxPut = pedidos.findIndex(p => p.datos.estado === "EN_FILA");
+  if (idxPut >= 0) {
+    const p = pedidos[idxPut];
+    p.datos = await http("PUT", `${p.url}/pedidos/${p.folio}`, { idPlatillo: 4, notas: "sin crutones (PUT)" });
+  }
+  const idxDel = pedidos.findIndex((p, i) => i !== idxPut && p.datos.estado === "EN_FILA");
+  if (idxDel >= 0) {
+    const p = pedidos[idxDel];
+    p.datos = await http("DELETE", `${p.url}/pedidos/${p.folio}`);
+  }
+  pintarPedidos();
+  refrescarCocinas();
+  try { await http("GET", `${API.replace(/\/api$/, "")}:6001/api/pedidos/9999`); } catch (e) {}
+}
+$("btnDemo").onclick = ejecutarDemo;
+
+actualizarBadgeModo();
+cargarMenu().then(() => {
+  refrescarCocinas();
+  if (new URLSearchParams(location.search).has("demo")) setTimeout(ejecutarDemo, 600);
+});
+setInterval(refrescarCocinas, 1000);
+setInterval(sondearPedidos, 1000);
+</script>
+</body>
+</html>

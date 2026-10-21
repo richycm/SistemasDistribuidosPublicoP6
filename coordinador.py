@@ -73,6 +73,8 @@ def agregar_cors(resp):
 @app.get("/web/")
 @app.get("/web/index.html")
 def servir_front():
+    if os.path.exists(os.path.join(BASE_DIR, "index.html")):
+        return send_from_directory(BASE_DIR, "index.html")
     return send_from_directory(app.static_folder, "index.html")
 
 @app.get("/api/menu")
