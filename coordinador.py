@@ -83,7 +83,33 @@ def obtener_menu():
 
 @app.get("/api/cocinas")
 def obtener_cocinas():
-    return jsonify([sondear_cocina(c) for c in COCINAS]), 200
+    base_url = request.host_url.rstrip("/")
+    is_cloud = "127.0.0.1" not in request.host and "localhost" not in request.host
+    res = []
+    for c in COCINAS:
+        info = sondear_cocina(c)
+        if is_cloud:
+            info["url"] = f"{base_url}/api/proxy/{c['puerto']}"
+        res.append(info)
+    return jsonify(res), 200
+
+@app.route("/api/proxy/<int:puerto>/<path:subpath>", methods=["GET", "POST", "PUT", "DELETE"])
+def proxy_cocina(puerto, subpath):
+    url = f"http://127.0.0.1:{puerto}/api/{subpath}"
+    headers = {k: v for k, v in request.headers if k.lower() != "host"}
+    try:
+        r = requests.request(
+            method=request.method,
+            url=url,
+            headers=headers,
+            data=request.get_data(),
+            timeout=10
+        )
+        resp_headers = dict(r.headers)
+        resp_headers["Access-Control-Allow-Origin"] = "*"
+        return (r.content, r.status_code, resp_headers)
+    except Exception as e:
+        return jsonify({"codigo": 502, "error": "Bad Gateway", "mensaje": str(e)}), 502
 
 @app.post("/api/despachos")
 def despachar():
@@ -105,8 +131,15 @@ def despachar():
         carga_ef = elegida["carga"] + en_transito.get(elegida["nombre"], 0)
         en_transito[elegida["nombre"]] += 1
         threading.Timer(0.8, lambda nom=elegida["nombre"]: liberar_reserva(nom)).start()
-    log("BALANCEO", f"Comensal [{comensal}] -> {elegida['nombre']} ({elegida['url']}) | Carga efectiva: {carga_ef}")
-    return jsonify({"comensal": comensal, "cocina": elegida["nombre"], "url": elegida["url"], "carga": carga_ef}), 200
+    
+    base_url = request.host_url.rstrip("/")
+    if "127.0.0.1" not in request.host and "localhost" not in request.host:
+        url_asignada = f"{base_url}/api/proxy/{elegida['puerto']}"
+    else:
+        url_asignada = elegida["url"]
+
+    log("BALANCEO", f"Comensal [{comensal}] -> {elegida['nombre']} ({url_asignada}) | Carga efectiva: {carga_ef}")
+    return jsonify({"comensal": comensal, "cocina": elegida["nombre"], "url": url_asignada, "carga": carga_ef}), 200
 
 def liberar_reserva(nombre):
     with lock:
