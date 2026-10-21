@@ -3,6 +3,7 @@ package com.mycompany.p6sistemasdistribuidos;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -76,14 +77,18 @@ public class CoordinadorDespacho {
     }
 
     public static void main(String[] args) {
-        // Interfaz grafica de monitoreo del coordinador
-        try {
-            SwingUtilities.invokeAndWait(() -> {
-                gui = new CoordinadorGUI(cocinas);
-                gui.setVisible(true);
-            });
-        } catch (Exception e) {
-            System.out.println("No se pudo abrir la interfaz grafica: " + e.getMessage());
+        // Interfaz grafica de monitoreo, salvo en un entorno sin pantalla (p. ej. un contenedor Docker)
+        if (GraphicsEnvironment.isHeadless()) {
+            log("INICIO", "Entorno sin pantalla: el coordinador corre solo como servicio REST (bitacora en consola).");
+        } else {
+            try {
+                SwingUtilities.invokeAndWait(() -> {
+                    gui = new CoordinadorGUI(cocinas);
+                    gui.setVisible(true);
+                });
+            } catch (Exception e) {
+                log("AVISO", "No se pudo abrir la interfaz grafica: " + e);
+            }
         }
 
         iniciarServidorRest();

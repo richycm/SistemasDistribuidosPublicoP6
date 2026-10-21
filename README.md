@@ -24,6 +24,7 @@ src/main/java/            Servidores REST
   com/.../FiltroCors.java, FiltroBitacoraHttp.java, MapeadorErrores.java, ApiError.java
   com/.../Pedido.java, SolicitudPedido.java, Menu.java, CocinaGUI.java, CoordinadorGUI.java
 pom.xml                   Proyecto Maven (Jersey, Grizzly, Jackson)
+Dockerfile                Contenedor con las 3 cocinas y el coordinador
 compilar.bat / iniciar_todo.bat / pruebas_curl.bat
 ```
 
@@ -82,6 +83,14 @@ compilar.bat        :: genera target\p6-servicios-web.jar con todas las dependen
 iniciar_todo.bat    :: 3 cocinas, coordinador, cliente Java y abre el cliente web
 pruebas_curl.bat    :: recorre todos los verbos y códigos de estado con curl (con los nodos recién iniciados)
 ```
+
+### Opción C — Docker
+El `Dockerfile` compila el proyecto y levanta las 3 cocinas y el coordinador en un contenedor (sin ventanas: cada nodo corre como servicio REST y escribe su bitácora en la consola).
+```bash
+docker build -t p6-restaurante .
+docker run --rm -p 5000:5000 -p 6001-6003:6001-6003 p6-restaurante
+```
+Después abre <http://localhost:5000/web/> o usa la API (`curl http://localhost:5000/api/cocinas`). El cliente Java (`ClienteComensalGUI`) también puede conectarse desde fuera del contenedor.
 
 ### Probar la tolerancia a fallos
 Cierra la ventana de la **Cocina Sur**: en a lo más 3 s el coordinador la marca **OFFLINE** y reparte los pedidos solo entre Norte y Centro. Al volver a abrirla se reintegra sola. Si se cierran las tres, `POST /api/despachos` responde **503**.

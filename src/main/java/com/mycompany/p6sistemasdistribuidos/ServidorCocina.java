@@ -1,5 +1,6 @@
 package com.mycompany.p6sistemasdistribuidos;
 
+import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.net.URI;
 import java.time.LocalTime;
@@ -36,26 +37,33 @@ public class ServidorCocina {
     }
 
     public void iniciar() {
-        // Interfaz grafica de monitoreo de esta cocina
-        try {
-            SwingUtilities.invokeAndWait(() -> {
-                gui = new CocinaGUI(nombre, puerto, cocina, bitacora);
-                gui.setVisible(true);
-                // Los eventos del modelo van a la consola estandar y a la GUI por el mismo log()
-                cocina.setListener(new Cocina.CocinaListener() {
-                    @Override
-                    public void onEstadoCambiado() {
-                        gui.onEstadoCambiado();
-                    }
+        // Los eventos del modelo van a la consola estandar y, si hay ventana, tambien a la GUI
+        cocina.setListener(new Cocina.CocinaListener() {
+            @Override
+            public void onEstadoCambiado() {
+                if (gui != null) {
+                    gui.onEstadoCambiado();
+                }
+            }
 
-                    @Override
-                    public void onEvento(String tag, String mensaje) {
-                        log(tag, mensaje);
-                    }
+            @Override
+            public void onEvento(String tag, String mensaje) {
+                log(tag, mensaje);
+            }
+        });
+
+        // Interfaz grafica de monitoreo, salvo en un entorno sin pantalla (p. ej. un contenedor Docker)
+        if (GraphicsEnvironment.isHeadless()) {
+            log("INICIO", "Entorno sin pantalla: la cocina corre solo como servicio REST (bitacora en consola).");
+        } else {
+            try {
+                SwingUtilities.invokeAndWait(() -> {
+                    gui = new CocinaGUI(nombre, puerto, cocina, bitacora);
+                    gui.setVisible(true);
                 });
-            });
-        } catch (Exception e) {
-            System.out.println("No se pudo abrir la interfaz grafica: " + e.getMessage());
+            } catch (Exception e) {
+                log("AVISO", "No se pudo abrir la interfaz grafica: " + e);
+            }
         }
 
         // Por defecto escucha en todas las interfaces (LAN). Con -Dbind.host=127.0.0.1
