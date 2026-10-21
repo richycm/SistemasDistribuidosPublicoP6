@@ -83,7 +83,8 @@ def obtener_menu():
 
 @app.get("/api/cocinas")
 def obtener_cocinas():
-    base_url = request.host_url.rstrip("/")
+    scheme = request.headers.get("X-Forwarded-Proto", request.scheme)
+    base_url = f"{scheme}://{request.host}"
     is_cloud = "127.0.0.1" not in request.host and "localhost" not in request.host
     res = []
     for c in COCINAS:
@@ -132,7 +133,8 @@ def despachar():
         en_transito[elegida["nombre"]] += 1
         threading.Timer(0.8, lambda nom=elegida["nombre"]: liberar_reserva(nom)).start()
     
-    base_url = request.host_url.rstrip("/")
+    scheme = request.headers.get("X-Forwarded-Proto", request.scheme)
+    base_url = f"{scheme}://{request.host}"
     if "127.0.0.1" not in request.host and "localhost" not in request.host:
         url_asignada = f"{base_url}/api/proxy/{elegida['puerto']}"
     else:
